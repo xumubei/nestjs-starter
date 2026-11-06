@@ -1,0 +1,131 @@
+name: Build and Test NestJS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, build and test (Node.js 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEST_DATABASE_URL: postgresql://starter:starter@127.0.0.1:5433/starter
+      TEST_REDIS_URL: redis://127.0.0.1:6380
+      TEST_KAFKA_BROKERS: 127.0.0.1:19092
+      TEST_RABBITMQ_URL: amqp://starter:starter@127.0.0.1:15672
+      TEST_TDENGINE_URL: ws://root:taosdata@127.0.0.1:16041
+      TEST_OSS_URL: http://127.0.0.1:9090
+      TEST_OSS_ACCESS_KEY: ci-access-key
+      TEST_OSS_SECRET_KEY: ci-secret-key
+
+    services:
+      s3mock:
+        image: adobe/s3mock:4.12.4
+        ports:
+          - 9090:9090
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          cache: true
+          cache_dependency_path: pnpm-lock.yaml
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and compile
+        run: |
+          pnpm run lint
+          pnpm run build
+
+      - name: Start integration services
+        run: |
+          docker compose up -d --wait postgres redis kafka rabbitmq tdengine
+          ready() {
+            for ((attempt = 0; attempt < 30; attempt++)); do
+              if "$@"; then return 0; fi
+              sleep 3
+            done
+            echo "Service did not become ready: $1" >&2
+            return 1
+          }
+          ready timeout 8s docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list
+          ready timeout 8s docker compose exec -T rabbitmq rabbitmq-diagnostics -q check_port_connectivity
+          tdengine_ready() {
+            curl --fail --silent --max-time 3 --user root:taosdata \
+              --data 'SELECT SERVER_VERSION()' http://127.0.0.1:16041/rest/sql | jq -e '.code == 0'
+          }
+          ready tdengine_ready
+          ready curl --fail --silent --max-time 3 --output /dev/null http://127.0.0.1:9090/
+
+      - name: Run unit and integration tests
+        timeout-minutes: 3
+        run: |
+          node --test --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=junit --test-reporter-destination=nestjs-unit-tests.xml \
+            test/app.test.js test/modules.test.js
+          result=0
+          node --test --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=junit --test-reporter-destination=nestjs-service-tests.xml \
+            test/services.test.js || result=$?
+          if (( result != 0 )); then
+            python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          report = pathlib.Path("nestjs-service-tests.xml")
+          if report.exists() and report.stat().st_size:
+              for case in ET.parse(report).iter("testcase"):
+                  if case.find("failure") is not None:
+                      print(f"::error file=test/services.test.js::Integration test failed: {case.get('name')}")
+          PY
+          fi
+          exit "$result"
+
+      - name: Package compiled application
+        run: |
+          tar -czf "$RUNNER_TEMP/nestjs-starter.tar.gz" \
+            LICENSE dist migrations scripts package.json pnpm-lock.yaml pnpm-workspace.yaml .env.example
+
+      - name: Upload compiled application
+        uses: actions/upload-artifact@v7
+        with:
+          name: nestjs-starter
+          path: ${{ runner.temp }}/nestjs-starter.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nestjs-test-reports
+          path: nestjs-*-tests.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Show service logs on failure
+        if: ${{ failure() }}
+        run: docker compose logs --no-color
+
+      - name: Stop integration services
+        if: ${{ always() }}
+        run: docker compose down -v

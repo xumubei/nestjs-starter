@@ -1,0 +1,58 @@
+{
+  "name": "nestjs-starter",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsc-watch --onSuccess \"node dist/main.js\"",
+    "build": "tsc",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
+    "start": "node dist/main.js",
+    "lint": "eslint --cache .",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run build && node --env-file-if-exists=.env --test",
+    "ci": "pnpm run lint && pnpm run test"
+  },
+  "dependencies": {
+    "@fastify/static": "catalog:prod",
+    "@nestjs/common": "catalog:prod",
+    "@nestjs/config": "catalog:prod",
+    "@nestjs/core": "catalog:prod",
+    "@nestjs/jwt": "catalog:prod",
+    "@nestjs/platform-fastify": "catalog:prod",
+    "@nestjs/schedule": "catalog:prod",
+    "@nestjs/swagger": "catalog:prod",
+    "@nestjs/throttler": "catalog:prod",
+    "@redis/client": "catalog:prod",
+    "@tdengine/websocket": "catalog:prod",
+    "amqplib": "catalog:prod",
+    "class-transformer": "catalog:prod",
+    "class-validator": "catalog:prod",
+    "fastify": "catalog:prod",
+    "kafkajs": "catalog:prod",
+    "minio": "catalog:prod",
+    "mqtt": "catalog:prod",
+    "node-pg-migrate": "catalog:prod",
+    "pg": "catalog:prod",
+    "reflect-metadata": "catalog:prod",
+    "rxjs": "catalog:prod",
+    "ws": "catalog:prod"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:dev",
+    "@types/amqplib": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@types/pg": "catalog:dev",
+    "@types/ws": "catalog:dev",
+    "aedes": "catalog:dev",
+    "eslint": "catalog:dev",
+    "eslint-plugin-slop": "catalog:dev",
+    "eslint-plugin-sonarjs": "catalog:dev",
+    "tsc-watch": "catalog:dev",
+    "typescript": "catalog:dev"
+  }
+}
