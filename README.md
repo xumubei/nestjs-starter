@@ -4,7 +4,32 @@
 
 An Apache-2.0 NestJS starter built with Fastify and TypeScript. Start with a REST API backed by PostgreSQL, JWT authentication, and an account-scoped task example. Add only the infrastructure your application needs.
 
-See the [module guide](docs/modules.en.md) for the complete mapping to JSeed's 16 Java starters, including MQTT, Redis, Kafka, RabbitMQ, WebSocket, TCP, object storage, scheduling, cryptography, and TDengine.
+## Supported modules
+
+The sample app wires in configuration, HTTP, JWT authentication, PostgreSQL, and tasks. Swagger is enabled in development and test by default. The task example uses the data-scope helpers. Import the other modules where your app needs them.
+
+| Module or feature | Entry point | Capabilities |
+| --- | --- | --- |
+| Configuration and logging | [`ConfigModule`](src/app.module.ts) | Environment validation, request IDs, and structured logs |
+| HTTP API | [`createApp()`](src/app.ts) | Fastify, DTO validation, error responses, and health checks |
+| OpenAPI | [`createApp()`](src/app.ts) | Swagger UI, OpenAPI JSON, and bearer authentication documentation |
+| Authentication | [`AuthModule`](src/auth) | Registration, login, and JWT authentication |
+| PostgreSQL | [`DatabaseModule`](src/database) | Connection pooling, migrations, transactions, pagination, and table routing |
+| Task example | [`TasksModule`](src/tasks) | Account-scoped task CRUD |
+| Data scope | [`ownerScope()` / `allowedScopeIds()`](src/modules/datascope) | Filter by record owner or authorized IDs |
+| Redis sessions | [`SessionModule`](src/modules/session) | Sessions with expiration and revocation |
+| Redis | [`RedisModule`](src/modules/redis) | Caching, TTLs, rate limiting, and lease locks |
+| Cryptography | [`CryptoModule`](src/modules/crypto) | AES-256-GCM, SHA-256, HMAC, and scrypt |
+| Scheduling | [`JobModule`](src/modules/job) | In-process cron, interval, and one-off jobs |
+| Kafka | [`KafkaModule`](src/modules/kafka) | Publishing, consumer groups, retries, and dead-letter topics |
+| RabbitMQ | [`RabbitMqModule`](src/modules/rabbitmq) | Publisher confirms, manual acknowledgements, retries, and dead-letter routing |
+| MQTT | [`MqttModule`](src/modules/mqtt) | Publishing, wildcard subscriptions, and subscription recovery |
+| TCP | [`TcpModule`](src/modules/tcp) | TCP clients and servers |
+| WebSocket | [`WebSocketModule`](src/modules/websocket) | Handshake authentication, unicast, and broadcast |
+| Object storage | [`OssModule`](src/modules/oss) | MinIO and S3-compatible uploads, streamed downloads, and presigned URLs |
+| TDengine | [`TdengineModule`](src/modules/tdengine) | SQL queries and execution over WebSocket |
+
+See the [module guide](docs/modules.en.md) for configuration, usage examples, and the comparison with JSeed’s 16 Java starters.
 
 ## Quick start
 
@@ -26,8 +51,13 @@ pnpm dev
 
 To use an existing PostgreSQL instance, set `DATABASE_URL` and start from the migration command. Open [Swagger UI](http://127.0.0.1:3000/docs), register with `POST /auth/register`, then paste the returned `accessToken` into **Authorize**. Use `/tasks` to create, list, update, and delete your own tasks. The list accepts `limit` and `offset`.
 
+### Example API endpoints
+
 | Endpoint | Purpose |
 | --- | --- |
+| `POST /auth/register` · `POST /auth/login` | Register or log in to receive a JWT |
+| `GET /tasks` · `POST /tasks` | List or create tasks |
+| `GET /tasks/:id` · `PATCH /tasks/:id` · `DELETE /tasks/:id` | Read, update, or delete a task |
 | `GET /health` | Process liveness |
 | `GET /health/ready` | PostgreSQL readiness and task schema check |
 | `GET /docs` and `GET /docs-json` | Swagger UI and OpenAPI document |

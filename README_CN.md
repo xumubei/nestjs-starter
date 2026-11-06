@@ -2,7 +2,34 @@
 
 [English](README.md) | **简体中文**
 
-基于 NestJS、Fastify 和 TypeScript 的 REST API 脚手架。内置 PostgreSQL 迁移、JWT 登录、Swagger 和按账号隔离的任务 CRUD。可按需导入 MQTT、Redis、Kafka、RabbitMQ、WebSocket、TCP、对象存储、定时任务、加密和 TDengine 等模块。参见 [JSeed 模块对照与接入示例](docs/modules.md)。
+基于 NestJS、Fastify 和 TypeScript 的 REST API 脚手架，内置 PostgreSQL 迁移、JWT 登录、Swagger 和按账号隔离的任务 CRUD。
+
+## 支持的模块
+
+示例应用默认接入配置、HTTP、JWT 认证、PostgreSQL 和任务模块，Swagger 在开发和测试环境默认启用。任务示例使用数据权限工具，其余模块可按需导入。
+
+| 模块或功能 | 代码入口 | 支持能力 |
+| --- | --- | --- |
+| 配置和日志 | [`ConfigModule`](src/app.module.ts) | 环境变量校验、请求 ID 和结构化日志 |
+| HTTP API | [`createApp()`](src/app.ts) | Fastify、DTO 校验、统一错误响应和健康检查 |
+| OpenAPI | [`createApp()`](src/app.ts) | Swagger UI、OpenAPI JSON 和 Bearer 认证文档 |
+| 用户认证 | [`AuthModule`](src/auth) | 注册、登录和 JWT 鉴权 |
+| PostgreSQL | [`DatabaseModule`](src/database) | 连接池、迁移、事务、分页和分表路由 |
+| 任务示例 | [`TasksModule`](src/tasks) | 按账号隔离的任务增删改查 |
+| 数据权限 | [`ownerScope()` / `allowedScopeIds()`](src/modules/datascope) | 按记录所有者或授权 ID 过滤 |
+| Redis 会话 | [`SessionModule`](src/modules/session) | 支持过期和撤销的会话 |
+| Redis | [`RedisModule`](src/modules/redis) | 缓存、TTL、限流和租约锁 |
+| 加密 | [`CryptoModule`](src/modules/crypto) | AES-256-GCM、SHA-256、HMAC 和 scrypt |
+| 定时任务 | [`JobModule`](src/modules/job) | 进程内 Cron、周期任务和延时任务 |
+| Kafka | [`KafkaModule`](src/modules/kafka) | 消息发布、消费组、重试和死信主题 |
+| RabbitMQ | [`RabbitMqModule`](src/modules/rabbitmq) | 发布确认、手动应答、重试和死信路由 |
+| MQTT | [`MqttModule`](src/modules/mqtt) | 消息发布、通配符订阅和重连后恢复订阅 |
+| TCP | [`TcpModule`](src/modules/tcp) | TCP 客户端和服务端 |
+| WebSocket | [`WebSocketModule`](src/modules/websocket) | 握手鉴权、单播和广播 |
+| 对象存储 | [`OssModule`](src/modules/oss) | 兼容 MinIO 和 S3，支持上传、流式下载和预签名 URL |
+| TDengine | [`TdengineModule`](src/modules/tdengine) | 通过 WebSocket 查询和执行 SQL |
+
+配置、调用示例和与 JSeed 16 个 Java Starter 的对照见[模块指南](docs/modules.md)。
 
 ## 本地启动
 
@@ -24,8 +51,13 @@ pnpm dev
 
 打开 `http://127.0.0.1:3000/docs`，先用 `POST /auth/register` 注册或 `POST /auth/login` 登录，复制 `accessToken` 到 Swagger 的 **Authorize**，就可以调用 `/tasks`。列表支持 `limit` 和 `offset` 分页。
 
+### 示例 API 接口
+
 | 路径 | 用途 |
 | --- | --- |
+| `POST /auth/register` · `POST /auth/login` | 注册或登录并获取 JWT |
+| `GET /tasks` · `POST /tasks` | 查询任务列表或创建任务 |
+| `GET /tasks/:id` · `PATCH /tasks/:id` · `DELETE /tasks/:id` | 查询、更新或删除指定任务 |
 | `GET /health` | 检查应用进程 |
 | `GET /health/ready` | 检查 PostgreSQL 和任务表 |
 | `GET /docs` | Swagger UI，开发和测试环境默认开启 |
