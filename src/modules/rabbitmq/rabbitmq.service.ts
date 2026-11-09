@@ -1,6 +1,6 @@
+// @env node
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage, Options } from 'amqplib'
-// @env node
 import type { Buffer } from 'node:buffer'
 import type { RabbitMqOptions } from './rabbitmq.options.js'
 import { randomUUID } from 'node:crypto'
@@ -30,19 +30,22 @@ export class RabbitMqService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     const connection = await connect(this.options.url, { timeout: 5000 })
     this.connection = connection
-    connection.on('error', () => this.logger.warn('RabbitMQ connection error'))
-    connection.once('close', () => {
+    connection.on('error', (error: Error) => this.logger.warn('RabbitMQ connection error', error))
+    connection.once('close', (error?: Error) => {
       this.connection = undefined
       this.publisher = undefined
+      if (error) {
+        this.logger.error('RabbitMQ connection lost. Restart the instance to reconnect', error)
+      }
     })
     try {
       this.publisher = await connection.createConfirmChannel()
-      this.publisher.on('error', () => this.logger.warn('RabbitMQ publisher error'))
+      this.publisher.on('error', (error: Error) => this.logger.warn('RabbitMQ publisher error', error))
       this.publisher.once('close', () => {
         this.publisher = undefined
       })
       this.publisher.on('return', (message: ConsumeMessage) => {
-        const id = message.properties.headers?.['x-jseed-publish-id']
+        const id = message.properties.headers?.['x-starter-publish-id']
         const pending = typeof id === 'string'
           ? this.unconfirmed.get(id)
           : undefined
@@ -55,6 +58,11 @@ export class RabbitMqService implements OnModuleInit, OnModuleDestroy {
       await connection.close().catch(() => {})
       throw error
     }
+  }
+
+  /** False after the broker connection is lost. Use it in a readiness check. */
+  get connected(): boolean {
+    return this.publisher !== undefined
   }
 
   declareQueue(queue: string, options: Options.AssertQueue = {}) {
@@ -75,7 +83,7 @@ export class RabbitMqService implements OnModuleInit, OnModuleDestroy {
           persistent: true,
           ...options,
           mandatory: true,
-          headers: { ...options.headers, 'x-jseed-publish-id': id },
+          headers: { ...options.headers, 'x-starter-publish-id': id },
         }, (error) => {
           if (error) {
             reject(error)
@@ -100,31 +108,26 @@ export class RabbitMqService implements OnModuleInit, OnModuleDestroy {
     }
     const channel = await this.connection.createChannel()
     const stop = new AbortController()
-    channel.on('error', () => this.logger.warn('RabbitMQ consumer error'))
+    channel.on('error', (error: Error) => this.logger.warn('RabbitMQ consumer error', error))
     channel.once('close', () => stop.abort())
     try {
       await channel.prefetch(this.prefetch)
-      const { consumerTag } = await channel.consume(queue, (message) => {
+      await channel.consume(queue, (message) => {
         if (!message) {
           this.logger.warn('RabbitMQ consumer was cancelled by the broker')
           return
         }
-        void this.consume(channel, message, handler, stop.signal).catch(() => {
+        void this.consume(channel, message, handler, stop.signal).catch((error: unknown) => {
           if (!stop.signal.aborted) {
-            this.logger.error('Could not acknowledge RabbitMQ message')
+            this.logger.error('Could not acknowledge RabbitMQ message', error)
           }
         })
       })
+      // Closing the channel stops delivery and requeues unacknowledged messages.
       return async () => {
         if (!stop.signal.aborted) {
-          try {
-            await channel.cancel(consumerTag)
-          }
-          finally {
-            if (!stop.signal.aborted) {
-              await channel.close()
-            }
-          }
+          stop.abort()
+          await channel.close()
         }
       }
     }
@@ -150,11 +153,12 @@ export class RabbitMqService implements OnModuleInit, OnModuleDestroy {
       try {
         await handler(message)
       }
-      catch {
+      catch (error) {
         if (signal.aborted) {
           return
         }
         if (attempt >= this.maxAttempts) {
+          this.logger.warn(`Rejecting a RabbitMQ message after ${attempt} attempts`, error)
           channel.nack(message, false, false)
           return
         }

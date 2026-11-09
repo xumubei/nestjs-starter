@@ -3,15 +3,16 @@ import type { CryptoOptions } from './crypto.options.js'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
-import { hashPassword, verifyPassword } from '../../auth/password.js'
 import { MODULE_OPTIONS_TOKEN } from './crypto.options.js'
+import { isHex256 } from './hex.js'
+import { hashPassword, verifyPassword } from './password.js'
 
 @Injectable()
 export class CryptoService {
   private readonly key: Buffer
 
   constructor(@Inject(MODULE_OPTIONS_TOKEN) options: CryptoOptions) {
-    if (!/^[\da-f]{64}$/i.test(options.key)) {
+    if (!isHex256(options.key)) {
       throw new Error('Crypto key must contain 64 hexadecimal characters')
     }
     this.key = Buffer.from(options.key, 'hex')
@@ -53,7 +54,7 @@ export class CryptoService {
   }
 
   verifyHmac(text: string, signature: string, secret: string | Buffer): boolean {
-    return /^[\da-f]{64}$/i.test(signature)
+    return isHex256(signature)
       && timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(this.hmacSha256(text, secret), 'hex'))
   }
 

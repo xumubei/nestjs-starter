@@ -23,7 +23,10 @@ export class HealthController {
   @ApiServiceUnavailableResponse({ description: 'PostgreSQL is unavailable or migrations are missing' })
   async ready(): Promise<{ status: 'ok' }> {
     try {
-      await this.database.pool.query('SELECT 1 FROM tasks LIMIT 0')
+      const { rowCount } = await this.database.pool.query('SELECT 1 FROM pgmigrations LIMIT 1')
+      if (!rowCount) {
+        throw new Error('No migrations applied')
+      }
       return { status: 'ok' }
     }
     catch (cause) {

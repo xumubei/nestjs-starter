@@ -8,7 +8,8 @@ import { TasksModule } from './tasks/tasks.module.js'
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    // Node loads .env through --env-file-if-exists in the package scripts.
+    ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, validate: validateEnv }),
     AuthModule,
     DatabaseModule,
     TasksModule,

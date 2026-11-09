@@ -1,5 +1,5 @@
-import type { OnModuleDestroy } from '@nestjs/common'
 // @env node
+import type { OnModuleDestroy } from '@nestjs/common'
 import type { Buffer } from 'node:buffer'
 import type { IncomingMessage, Server } from 'node:http'
 import type { Duplex } from 'node:stream'
@@ -123,8 +123,8 @@ export class WebSocketService implements OnModuleDestroy {
         sessionId,
         principal,
         payload: data.toString(),
-      })).catch(() => {
-        this.logger.error('WebSocket message handler failed')
+      })).catch((error: unknown) => {
+        this.logger.error('WebSocket message handler failed', error)
       })
     })
   }

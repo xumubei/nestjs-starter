@@ -67,5 +67,11 @@ services:
     environment:
       TAOS_FQDN: tdengine
 
+  oss:
+    image: adobe/s3mock:4.12.4
+    profiles: [integrations]
+    ports:
+      - '127.0.0.1:9090:9090'
+
 volumes:
   pgdata:

@@ -1,5 +1,5 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common'
-import type { AuthenticatedRequest } from './types.js'
+import type { FastifyRequest } from 'fastify'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { AuthTokenService } from './auth-token.service.js'
@@ -20,12 +20,12 @@ export class AuthGuard implements CanActivate {
       return true
     }
 
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
+    const request = context.switchToHttp().getRequest<FastifyRequest>()
     const accountId = await this.tokens.accountFromBearer(request.headers.authorization)
     if (!accountId) {
       throw new UnauthorizedException('Valid bearer token required')
     }
-    request.accountId = accountId
+    request.requestContext.set('accountId', accountId)
     return true
   }
 }

@@ -27,11 +27,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       disableOfflineQueue: true,
     })
 
-    this.client.on('error', () => this.logger.warn('Redis client error'))
+    this.client.on('error', (error: Error) => this.logger.warn('Redis client error', error))
   }
 
   async onModuleInit(): Promise<void> {
     try {
+      // connect() keeps retrying an unreachable server, so the ready event enforces the timeout.
       await Promise.all([
         once(this.client, 'ready', {
           signal: AbortSignal.timeout(this.connectTimeout),
@@ -39,9 +40,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         this.client.connect(),
       ])
     }
-    catch {
+    catch (cause) {
       this.onModuleDestroy()
-      throw new Error('Could not connect to Redis')
+      throw new Error('Could not connect to Redis', { cause })
     }
   }
 
@@ -72,7 +73,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (!Number.isSafeInteger(leaseMs) || leaseMs < 1) {
       throw new RangeError('Redis lease must be a positive integer in milliseconds')
     }
-    const lockKey = `jseed:lock:${key}`
+    const lockKey = `starter:lock:${key}`
     const token = randomUUID()
     const acquired = await this.client.set(lockKey, token, {
       condition: 'NX',
@@ -92,7 +93,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
           keys: [lockKey],
           arguments: [token],
         },
-      ).catch(() => this.logger.warn('Redis lock release failed'))
+      ).catch((error: unknown) => this.logger.warn('Redis lock release failed', error))
     }
   }
 
@@ -103,7 +104,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const count = await this.client.eval(
       'local count = redis.call(\'INCR\', KEYS[1]); if count == 1 then redis.call(\'PEXPIRE\', KEYS[1], ARGV[1]) end; return count',
       {
-        keys: [`jseed:rate:${key}`],
+        keys: [`starter:rate:${key}`],
         arguments: [
           String(windowMs),
         ],

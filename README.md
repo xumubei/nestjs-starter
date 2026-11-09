@@ -20,7 +20,7 @@ The sample app wires in configuration, HTTP, JWT authentication, PostgreSQL, and
 | Redis sessions | [`SessionModule`](src/modules/session) | Sessions with expiration and revocation |
 | Redis | [`RedisModule`](src/modules/redis) | Caching, TTLs, rate limiting, and lease locks |
 | Cryptography | [`CryptoModule`](src/modules/crypto) | AES-256-GCM, SHA-256, HMAC, and scrypt |
-| Scheduling | [`JobModule`](src/modules/job) | In-process cron, interval, and one-off jobs |
+| Scheduling | [`ScheduleModule`](https://docs.nestjs.com/techniques/task-scheduling) from `@nestjs/schedule` | In-process cron, interval, and one-off jobs |
 | Kafka | [`KafkaModule`](src/modules/kafka) | Publishing, consumer groups, retries, and dead-letter topics |
 | RabbitMQ | [`RabbitMqModule`](src/modules/rabbitmq) | Publisher confirms, manual acknowledgements, retries, and dead-letter routing |
 | MQTT | [`MqttModule`](src/modules/mqtt) | Publishing, wildcard subscriptions, and subscription recovery |
@@ -59,10 +59,12 @@ To use an existing PostgreSQL instance, set `DATABASE_URL` and start from the mi
 | `GET /tasks` · `POST /tasks` | List or create tasks |
 | `GET /tasks/:id` · `PATCH /tasks/:id` · `DELETE /tasks/:id` | Read, update, or delete a task |
 | `GET /health` | Process liveness |
-| `GET /health/ready` | PostgreSQL readiness and task schema check |
+| `GET /health/ready` | PostgreSQL readiness and applied migrations check |
 | `GET /docs` and `GET /docs-json` | Swagger UI and OpenAPI document |
 
 Swagger is enabled by default in development and test. Errors include `statusCode`, `message`, and `requestId`, and responses include the `X-Request-Id` header.
+
+The package scripts load `.env` with Node's `--env-file-if-exists`. When you run `node dist/main.js` directly, export the variables yourself. Behind a reverse proxy, set `TRUST_PROXY` so that client IPs and the login rate limit work per client. The rate limit is kept in memory, so each instance counts separately.
 
 ## Use a module
 
