@@ -26,7 +26,7 @@ async function createContext(registration) {
 const kafkaBrokers = process.env.TEST_KAFKA_BROKERS
 it('Kafka retries before forwarding a failure to the dead-letter topic', { skip: !kafkaBrokers && 'Set TEST_KAFKA_BROKERS', timeout: 30000 }, async () => {
   const brokers = kafkaBrokers.split(',').map(value => value.trim())
-  const topic = `jseed-test-${randomUUID()}`
+  const topic = `starter-test-${randomUUID()}`
   const deadLetterTopic = `${topic}.DLT`
   const config = { brokers, logLevel: logLevel.NOTHING }
   const admin = new Kafka(config).admin()
@@ -88,7 +88,7 @@ it('Kafka retries before forwarding a failure to the dead-letter topic', { skip:
 
 const rabbitUrl = process.env.TEST_RABBITMQ_URL
 it('RabbitMQ rejects unroutable publishes and dead-letters after retries', { skip: !rabbitUrl && 'Set TEST_RABBITMQ_URL', timeout: 20000 }, async () => {
-  const name = `jseed-test-${randomUUID()}`
+  const name = `starter-test-${randomUUID()}`
   const dlq = `${name}.dlq`
   const connection = await connect(rabbitUrl, { timeout: 5000 })
   const setup = await connection.createChannel()
@@ -137,7 +137,7 @@ it('RabbitMQ rejects unroutable publishes and dead-letters after retries', { ski
 const ossEndpoint = process.env.TEST_OSS_URL
 it('OSS uploads, streams downloads, and signs temporary URLs', { skip: !ossEndpoint && 'Set TEST_OSS_URL', timeout: 20000 }, async () => {
   const url = new URL(ossEndpoint)
-  const bucket = `jseed-test-${randomUUID()}`
+  const bucket = `starter-test-${randomUUID()}`
   const app = await createContext(OssModule.register({
     bucket,
     client: {

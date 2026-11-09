@@ -24,6 +24,7 @@ catalogs:
     typescript: ~6.0.3
 
   prod:
+    '@fastify/request-context': ^7.0.5
     '@fastify/static': ^10.1.10
     '@nestjs/common': 11.2.8
     '@nestjs/config': ^12.1.0

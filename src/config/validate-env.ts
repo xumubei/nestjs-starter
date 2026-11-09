@@ -1,4 +1,15 @@
 import type { AppConfig } from './types.js'
+import { isHex256 } from '../modules/crypto/hex.js'
+
+function parseTrustProxy(value: unknown): AppConfig['TRUST_PROXY'] {
+  const text = String(value || 'false').trim()
+  if (text === 'true' || text === 'false') {
+    return text === 'true'
+  }
+  return /^\d+$/.test(text)
+    ? Number(text)
+    : text
+}
 
 export function validateEnv(env: Record<string, unknown>): AppConfig {
   const mode = env.NODE_ENV ?? 'development'
@@ -29,7 +40,7 @@ export function validateEnv(env: Record<string, unknown>): AppConfig {
   }
 
   const jwtSecret = env.JWT_SECRET
-  if (typeof jwtSecret !== 'string' || !/^[\da-f]{64}$/i.test(jwtSecret)) {
+  if (!isHex256(jwtSecret)) {
     throw new Error('JWT_SECRET must be a 32-byte key encoded as 64 hex characters')
   }
 
@@ -38,6 +49,7 @@ export function validateEnv(env: Record<string, unknown>): AppConfig {
     HOST: host.trim(),
     PORT: Number(port),
     SWAGGER_ENABLED: swagger === 'true',
+    TRUST_PROXY: parseTrustProxy(env.TRUST_PROXY),
     DATABASE_URL: databaseUrl,
     JWT_SECRET: jwtSecret,
   }

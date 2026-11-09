@@ -71,6 +71,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
           if (!deadLetterTopic) {
             throw failure.error
           }
+          this.logger.warn(`Forwarding a failed message to ${deadLetterTopic}`, failure.error)
           await this.publish({
             topic: deadLetterTopic,
             messages: [
@@ -99,8 +100,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     const results = await Promise.allSettled([...this.consumers].map(consumer => consumer.disconnect()))
     this.consumers.clear()
-    if (results.some(result => result.status === 'rejected')) {
-      this.logger.warn('Kafka consumer shutdown failed')
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        this.logger.warn('Kafka consumer shutdown failed', result.reason)
+      }
     }
     await this.producer.disconnect()
   }

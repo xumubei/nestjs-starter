@@ -1,6 +1,6 @@
+// @env node
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import type { IClientPublishOptions, IClientSubscribeOptions, MqttClient } from 'mqtt'
-// @env node
 import type { Buffer } from 'node:buffer'
 import type { MqttOptions } from './mqtt.options.js'
 import { clearTimeout, setTimeout } from 'node:timers'
@@ -52,12 +52,12 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
       resubscribe: true,
       queueQoSZero: false,
     })
-    this.client.on('error', () => this.logger.warn('MQTT client error'))
+    this.client.on('error', error => this.logger.warn('MQTT client error', error))
     this.client.on('message', (topic, payload) => {
       for (const [filter, handler] of this.handlers) {
         if (matches(filter, topic)) {
-          void Promise.resolve().then(() => handler(topic, payload)).catch(() => {
-            this.logger.error('MQTT message handler failed')
+          void Promise.resolve().then(() => handler(topic, payload)).catch((error: unknown) => {
+            this.logger.error('MQTT message handler failed', error)
           })
         }
       }
@@ -69,7 +69,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     try {
       await new Promise<void>((resolve, reject) => {
         const connected = () => resolve()
-        const timer = setTimeout(reject, this.connectTimeout)
+        const timer = setTimeout(() => reject(new Error('Connection timed out')), this.connectTimeout)
         cleanup = () => {
           clearTimeout(timer)
           this.client.off('connect', connected)
@@ -81,9 +81,9 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
       })
       this.client.options.reconnectPeriod = this.reconnectPeriod
     }
-    catch {
+    catch (cause) {
       await this.client.endAsync(true)
-      throw new Error('Could not connect to the MQTT broker')
+      throw new Error('Could not connect to the MQTT broker', { cause })
     }
     finally {
       cleanup()

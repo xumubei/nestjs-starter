@@ -8,16 +8,17 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "tsc-watch --onSuccess \"node dist/main.js\"",
+    "dev": "tsc-watch --onSuccess \"node --env-file-if-exists=.env dist/main.js\"",
     "build": "tsc",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
-    "start": "node dist/main.js",
+    "start": "node --env-file-if-exists=.env dist/main.js",
     "lint": "eslint --cache .",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && node --env-file-if-exists=.env --test",
     "ci": "pnpm run lint && pnpm run test"
   },
   "dependencies": {
+    "@fastify/request-context": "catalog:prod",
     "@fastify/static": "catalog:prod",
     "@nestjs/common": "catalog:prod",
     "@nestjs/config": "catalog:prod",

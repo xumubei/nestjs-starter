@@ -161,6 +161,15 @@ describe('REST API', () => {
     const url = `/tasks/${task.id}`
 
     assert.deepEqual((await app.inject({ url: '/tasks', headers: otherHeaders })).json(), [])
+    const interleaved = await Promise.all(Array.from({ length: 20 }, (_, index) => app.inject({
+      url: '/tasks',
+      headers: index % 2
+        ? otherHeaders
+        : ownerHeaders,
+    })))
+    assert.deepEqual(interleaved.map(response => response.json().length), Array.from({ length: 20 }, (_, index) => index % 2
+      ? 0
+      : 1))
     assert.deepEqual((await app.inject({ url: '/tasks?limit=1', headers: ownerHeaders })).json(), [task])
     assert.deepEqual((await app.inject({ url: '/tasks?offset=1', headers: ownerHeaders })).json(), [])
     assert.equal((await app.inject({ url: '/tasks?limit=101', headers: ownerHeaders })).statusCode, 400)
@@ -206,8 +215,12 @@ describe('environment configuration', () => {
       HOST: '127.0.0.1',
       PORT: 3000,
       SWAGGER_ENABLED: true,
+      TRUST_PROXY: false,
     })
     assert.equal(validateEnv({ ...validEnv, NODE_ENV: 'production' }).SWAGGER_ENABLED, false)
+    assert.equal(validateEnv({ ...validEnv, TRUST_PROXY: 'true' }).TRUST_PROXY, true)
+    assert.equal(validateEnv({ ...validEnv, TRUST_PROXY: '1' }).TRUST_PROXY, 1)
+    assert.equal(validateEnv({ ...validEnv, TRUST_PROXY: '10.0.0.0/8, 127.0.0.1' }).TRUST_PROXY, '10.0.0.0/8, 127.0.0.1')
     assert.throws(() => validateEnv({ ...validEnv, PORT: '65536' }), /PORT must be/)
     assert.throws(() => validateEnv({ ...validEnv, JWT_SECRET: 'weak' }), /JWT_SECRET must be/)
     assert.throws(() => validateEnv({ ...validEnv, DATABASE_URL: 'https://example.test' }), /DATABASE_URL must be/)

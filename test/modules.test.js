@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict'
 // @env node
+import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
 import { randomUUID } from 'node:crypto'
 import { EventEmitter, once } from 'node:events'
@@ -12,18 +12,15 @@ import { FastifyAdapter } from '@nestjs/platform-fastify'
 import { Aedes } from 'aedes'
 import { WebSocket } from 'ws'
 import { CryptoModule, CryptoService } from '../dist/modules/crypto/index.js'
-import { JobModule, Timeout } from '../dist/modules/job/index.js'
 import { MqttModule, MqttService } from '../dist/modules/mqtt/index.js'
 import { RedisModule, RedisService } from '../dist/modules/redis/index.js'
 import { SessionModule, SessionService } from '../dist/modules/session/index.js'
 import { TcpModule, TcpService } from '../dist/modules/tcp/index.js'
 import { WebSocketModule, WebSocketService } from '../dist/modules/websocket/index.js'
 
-async function createContext(registration) {
+async function createContext(...imports) {
   class TestModule {}
-  Module({
-    imports: [registration],
-  })(TestModule)
+  Module({ imports })(TestModule)
   return NestFactory.createApplicationContext(TestModule, { logger: false, abortOnError: false })
 }
 
@@ -201,31 +198,11 @@ it('WebSocket rejects unauthenticated upgrades and supports unicast and broadcas
   assert.equal((await broadcast)[0].toString(), 'update')
 })
 
-it('JobModule runs a declared timer through Nest discovery', { timeout: 4000 }, async (t) => {
-  const events = new EventEmitter()
-  class ExampleJob {
-    run() {
-      events.emit('run')
-    }
-  }
-  Timeout(50)(ExampleJob.prototype, 'run', Object.getOwnPropertyDescriptor(ExampleJob.prototype, 'run'))
-  class ExampleModule {}
-  Module({
-    imports: [
-      JobModule.forRoot(),
-    ],
-    providers: [ExampleJob],
-  })(ExampleModule)
-  const done = once(events, 'run', {
-    signal: AbortSignal.timeout(2000),
-  })
-  const app = await createContext(ExampleModule)
-  t.after(() => app.close())
-  await done
-})
-
 it('Redis coordinates locks, rate limits and revocable sessions', { skip: !redisUrl && 'Set TEST_REDIS_URL', timeout: 8000 }, async (t) => {
-  const app = await createContext(SessionModule.register(RedisModule.register({ url: redisUrl })))
+  const app = await createContext(
+    RedisModule.register({ url: redisUrl, isGlobal: true }),
+    SessionModule.register({}),
+  )
   t.after(() => app.close())
   const sessions = app.get(SessionService)
   const redis = app.get(RedisService)
@@ -238,7 +215,7 @@ it('Redis coordinates locks, rate limits and revocable sessions', { skip: !redis
 
   const allowed = await Promise.all(Array.from({ length: 8 }, () => redis.allow(key, 3, 5000)))
   assert.equal(allowed.filter(Boolean).length, 3)
-  await redis.delete(`jseed:rate:${key}`)
+  await redis.delete(`starter:rate:${key}`)
 
   const token = await sessions.create('account-a')
   assert.equal(await sessions.resolve(token), 'account-a')

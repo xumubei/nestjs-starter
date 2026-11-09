@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { DatabaseService } from '../database/database.service.js'
-import { hashPassword, verifyPassword } from './password.js'
+import { hashPassword, verifyPassword } from '../modules/crypto/password.js'
 
 @Injectable()
 export class AuthService {

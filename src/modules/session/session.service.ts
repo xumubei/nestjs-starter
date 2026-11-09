@@ -3,13 +3,13 @@ import type { SessionOptions } from './session.options.js'
 import { createHash, randomBytes } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { RedisService } from '../redis/index.js'
-import { SESSION_OPTIONS } from './session.options.js'
+import { MODULE_OPTIONS_TOKEN } from './session.options.js'
 
 @Injectable()
 export class SessionService {
   constructor(
     private readonly redis: RedisService,
-    @Inject(SESSION_OPTIONS) private readonly options: SessionOptions,
+    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: SessionOptions,
   ) {}
 
   async create(accountId: string): Promise<string> {
@@ -30,6 +30,6 @@ export class SessionService {
 
   private key(token: string): string {
     const hash = createHash('sha256').update(token).digest('hex')
-    return `${this.options.prefix ?? 'jseed:session:'}${hash}`
+    return `${this.options.prefix ?? 'starter:session:'}${hash}`
   }
 }

@@ -27,9 +27,9 @@ export class TdengineService implements OnModuleInit, OnModuleDestroy {
       config.setTimeOut(this.options.timeoutMs ?? 5000)
       this.connection = await sqlConnect(config)
     }
-    catch {
+    catch (cause) {
       await this.onModuleDestroy()
-      throw new Error('Could not connect to TDengine')
+      throw new Error('Could not connect to TDengine', { cause })
     }
   }
 
@@ -40,10 +40,12 @@ export class TdengineService implements OnModuleInit, OnModuleDestroy {
     return this.connection
   }
 
+  /** Sends the SQL as-is. Bind untrusted values through `client.stmtInit()` instead of string concatenation. */
   query(sql: string) {
     return this.client.query(sql)
   }
 
+  /** Sends the SQL as-is. Bind untrusted values through `client.stmtInit()` instead of string concatenation. */
   execute(sql: string) {
     return this.client.exec(sql)
   }

@@ -20,7 +20,7 @@
 | Redis 会话 | [`SessionModule`](src/modules/session) | 支持过期和撤销的会话 |
 | Redis | [`RedisModule`](src/modules/redis) | 缓存、TTL、限流和租约锁 |
 | 加密 | [`CryptoModule`](src/modules/crypto) | AES-256-GCM、SHA-256、HMAC 和 scrypt |
-| 定时任务 | [`JobModule`](src/modules/job) | 进程内 Cron、周期任务和延时任务 |
+| 定时任务 | `@nestjs/schedule` 的 [`ScheduleModule`](https://docs.nestjs.com/techniques/task-scheduling) | 进程内 Cron、周期任务和延时任务 |
 | Kafka | [`KafkaModule`](src/modules/kafka) | 消息发布、消费组、重试和死信主题 |
 | RabbitMQ | [`RabbitMqModule`](src/modules/rabbitmq) | 发布确认、手动应答、重试和死信路由 |
 | MQTT | [`MqttModule`](src/modules/mqtt) | 消息发布、通配符订阅和重连后恢复订阅 |
@@ -59,11 +59,13 @@ pnpm dev
 | `GET /tasks` · `POST /tasks` | 查询任务列表或创建任务 |
 | `GET /tasks/:id` · `PATCH /tasks/:id` · `DELETE /tasks/:id` | 查询、更新或删除指定任务 |
 | `GET /health` | 检查应用进程 |
-| `GET /health/ready` | 检查 PostgreSQL 和任务表 |
+| `GET /health/ready` | 检查 PostgreSQL 连接和数据库迁移是否已执行 |
 | `GET /docs` | Swagger UI，开发和测试环境默认开启 |
 | `GET /docs-json` | OpenAPI 文档 |
 
 错误响应包含 `statusCode`、`message` 和 `requestId`，请求 ID 也会通过 `X-Request-Id` 响应头返回。
+
+`package.json` 中的脚本通过 Node 的 `--env-file-if-exists` 加载 `.env`。直接运行 `node dist/main.js` 时需要自行设置环境变量。部署在反向代理之后时，请设置 `TRUST_PROXY`，这样客户端 IP 和登录限流才会按真实客户端计算。限流计数保存在内存中，多实例部署时各实例分别计数。
 
 ## 按需导入 Redis 和 MQTT
 
@@ -146,7 +148,7 @@ pnpm run ci
 pnpm start
 ```
 
-`pnpm run ci` 运行 ESLint、TypeScript 编译和测试。测试默认覆盖 HTTP、MQTT、TCP、WebSocket、加密和调度。将 `.env.example` 中对应的 `TEST_*` 配置填入 `.env`，即可追加 PostgreSQL、Redis、Kafka、RabbitMQ、OSS 和 TDengine 服务集成测试。请使用专用测试实例，测试会创建并清理临时对象。`pnpm start` 启动编译后的应用。
+`pnpm run ci` 运行 ESLint、TypeScript 编译和测试。测试默认覆盖 HTTP、MQTT、TCP、WebSocket 和加密。将 `.env.example` 中对应的 `TEST_*` 配置填入 `.env`，即可追加 PostgreSQL、Redis、Kafka、RabbitMQ、OSS 和 TDengine 服务集成测试。请使用专用测试实例，测试会创建并清理临时对象。`pnpm start` 启动编译后的应用。
 
 
 ## GitHub 自动检查
